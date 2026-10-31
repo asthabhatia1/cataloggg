@@ -1,0 +1,106 @@
+{
+  "settings": {
+    "businessName": "Reet Beauty Wholesale",
+    "tagline": "Mainly engaged in the wholesale of beauty and hair care products.",
+    "phoneDisplay": "+91 89208 21103",
+    "whatsapp": "918920821103",
+    "about": "Wholesale supplier of salon capes, dummy stands, hair tools and beauty essentials. Carton packing for salons, distributors and retailers.",
+    "banner": "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1600&q=80",
+    "avatar": "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&w=200&q=80"
+  },
+  "categories": [
+    {
+      "id": "cat-capes",
+      "name": "Capes",
+      "subtitle": "Hair cutting capes",
+      "order": 0
+    },
+    {
+      "id": "cat-stands",
+      "name": "Dummy Stand",
+      "subtitle": "",
+      "order": 1
+    },
+    {
+      "id": "cat-tools",
+      "name": "Salon Tools",
+      "subtitle": "",
+      "order": 2
+    },
+    {
+      "id": "cat-mvw5omiv-9cbxy5",
+      "name": "Hair Oils",
+      "subtitle": "",
+      "order": 3
+    }
+  ],
+  "products": [
+    {
+      "id": "p-capes-1",
+      "categoryId": "cat-capes",
+      "name": "Assorted salon capes",
+      "subtitle": "300pcs/ctn",
+      "description": "Material: TAFFETA. Mixed prints and solids for salon cutting and colouring. Carton of 300 pieces.",
+      "price": "",
+      "images": [
+        "https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1200&q=80"
+      ]
+    },
+    {
+      "id": "p-capes-2",
+      "categoryId": "cat-capes",
+      "name": "Printed cutting capes",
+      "subtitle": "300pcs/ctn",
+      "description": "Contact for more styles. Waterproof taffeta, neck Velcro, mixed graphic prints.",
+      "price": "",
+      "images": [
+        "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=1200&q=80"
+      ]
+    },
+    {
+      "id": "p-capes-3",
+      "categoryId": "cat-capes",
+      "name": "Premium colour cape",
+      "subtitle": "300pcs/ctn",
+      "description": "Full-coverage colouring cape. Soft hand-feel taffeta, one size.",
+      "price": "",
+      "images": [
+        "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=1200&q=80"
+      ]
+    },
+    {
+      "id": "p-stand-1",
+      "categoryId": "cat-stands",
+      "name": "Dummy stand",
+      "subtitle": "10pcs/ctn",
+      "description": "Adjustable mannequin / dummy stand for salon training heads. Metal pole with clamp.",
+      "price": "",
+      "images": [
+        "https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?auto=format&fit=crop&w=1200&q=80"
+      ]
+    },
+    {
+      "id": "p-stand-2",
+      "categoryId": "cat-stands",
+      "name": "Dummy stand (colour)",
+      "subtitle": "40pcs/ctn",
+      "description": "Assorted colour dummy stands. 40 pieces per carton.",
+      "price": "",
+      "images": [
+        "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&w=1200&q=80"
+      ]
+    },
+    {
+      "id": "p-tools-1",
+      "categoryId": "cat-tools",
+      "name": "Salon clipper set",
+      "subtitle": "20pcs/ctn",
+      "description": "Professional clippers for salon and barber wholesale.",
+      "price": "",
+      "images": [
+        "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1200&q=80"
+      ]
+    }
+  ]
+}

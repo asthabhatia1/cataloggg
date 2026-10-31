@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#202c33" />
+  <title>Admin</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div id="loginView" class="admin-login">
+    <form class="login-card" id="loginForm">
+      <h1>Admin</h1>
+      <p class="muted">Sign in to edit the catalog, photos and website content.</p>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required />
+      </div>
+      <p class="error" id="loginError"></p>
+      <button class="primary" type="submit">Open admin panel</button>
+    </form>
+  </div>
+
+  <div id="adminView" class="admin-shell hidden">
+    <nav class="admin-nav">
+      <strong style="padding:8px 12px;display:block">Admin</strong>
+      <button type="button" class="active" data-tab="settings">Website</button>
+      <button type="button" data-tab="categories">Categories</button>
+      <button type="button" data-tab="products">Products</button>
+      <a href="/">View catalog</a>
+      <button type="button" id="logoutBtn">Log out</button>
+    </nav>
+    <main class="admin-main">
+      <section class="panel active" id="tab-settings">
+        <h2>Website content</h2>
+        <p class="muted">These details show on the catalog home and product pages. WhatsApp uses the number you save here.</p>
+        <form id="settingsForm">
+          <div class="field"><label>Business name</label><input name="businessName" /></div>
+          <div class="field"><label>Phone shown on site</label><input name="phoneDisplay" /></div>
+          <div class="field"><label>WhatsApp number (digits with country code)</label><input name="whatsapp" placeholder="918920821103" /></div>
+          <div class="field"><label>Banner tagline</label><textarea name="tagline"></textarea></div>
+          <div class="field"><label>About the business</label><textarea name="about"></textarea></div>
+          <div class="field">
+            <label>Banner photo</label>
+            <div class="thumbs" id="bannerPreview"></div>
+            <label class="file-btn">Upload banner<input type="file" accept="image/*" id="bannerFile" /></label>
+            <input type="hidden" name="banner" />
+          </div>
+          <div class="field">
+            <label>Profile / avatar photo</label>
+            <div class="thumbs" id="avatarPreview"></div>
+            <label class="file-btn">Upload avatar<input type="file" accept="image/*" id="avatarFile" /></label>
+            <input type="hidden" name="avatar" />
+          </div>
+          <button class="primary" type="submit">Save website</button>
+        </form>
+      </section>
+
+      <section class="panel" id="tab-categories">
+        <h2>Categories</h2>
+        <form id="catForm" class="row-card">
+          <div class="field"><label>Category name</label><input name="name" required placeholder="Capes" /></div>
+          <div class="field"><label>Optional subtitle</label><input name="subtitle" placeholder="Hair cutting capes" /></div>
+          <button class="primary" type="submit">Add category</button>
+        </form>
+        <div id="catList"></div>
+      </section>
+
+      <section class="panel" id="tab-products">
+        <h2>Products</h2>
+        <form id="productForm" class="row-card">
+          <input type="hidden" name="id" />
+          <div class="field">
+            <label>Category</label>
+            <select name="categoryId" required></select>
+          </div>
+          <div class="field"><label>Product name</label><input name="name" required /></div>
+          <div class="field"><label>Pack / subtitle</label><input name="subtitle" placeholder="300pcs/ctn" /></div>
+          <div class="field"><label>Price (optional)</label><input name="price" placeholder="₹0 / carton" /></div>
+          <div class="field"><label>Description</label><textarea name="description"></textarea></div>
+          <div class="field">
+            <label>Photos</label>
+            <div class="thumbs" id="productThumbs"></div>
+            <label class="file-btn">Add photos<input type="file" accept="image/*" id="productFiles" multiple /></label>
+          </div>
+          <button class="primary" type="submit" id="productSubmit">Add product</button>
+          <button type="button" class="danger hidden" id="cancelEdit" style="margin-top:10px;width:100%">Cancel edit</button>
+        </form>
+        <div id="productList"></div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="/js/admin.js"></script>
+</body>
+</html>
