@@ -6,6 +6,11 @@ const cartBtn = document.getElementById("cartBtn");
 const shareBtn = document.getElementById("shareBtn");
 const cartCount = document.getElementById("cartCount");
 const toastEl = document.getElementById("toast");
+const cartSheetRoot = document.getElementById("cartSheetRoot");
+const sheetImg = document.getElementById("sheetImg");
+const sheetName = document.getElementById("sheetName");
+const sheetMeta = document.getElementById("sheetMeta");
+const sheetSub = document.getElementById("sheetSub");
 
 let catalog = { settings: {}, categories: [], products: [] };
 
@@ -44,6 +49,24 @@ function toast(msg) {
   setTimeout(() => toastEl.classList.remove("show"), 1800);
 }
 
+function closeCartSheet() {
+  cartSheetRoot.classList.remove("open");
+  cartSheetRoot.setAttribute("aria-hidden", "true");
+}
+
+function openCartSheet(product, qty) {
+  const image = (product.images && product.images[0]) || "";
+  sheetImg.src = imgSrc(image);
+  sheetName.textContent = product.name;
+  sheetMeta.textContent = [product.subtitle, `${qty} in cart`].filter(Boolean).join(" · ");
+  sheetSub.textContent = qty > 1 ? "Quantity updated in your cart." : "This item is in your cart.";
+  cartSheetRoot.classList.add("open");
+  cartSheetRoot.setAttribute("aria-hidden", "false");
+  cartCount.classList.remove("pop");
+  void cartCount.offsetWidth;
+  cartCount.classList.add("pop");
+}
+
 function addToCart(product, qty = 1) {
   const cart = getCart();
   const found = cart.find((i) => i.id === product.id);
@@ -58,7 +81,8 @@ function addToCart(product, qty = 1) {
     });
   }
   setCart(cart);
-  toast("Added to cart");
+  const item = getCart().find((i) => i.id === product.id);
+  openCartSheet(product, item ? item.qty : qty);
 }
 
 function parseRoute() {
@@ -71,6 +95,7 @@ function parseRoute() {
 }
 
 function go(path) {
+  closeCartSheet();
   history.pushState({}, "", path);
   render();
 }
@@ -253,6 +278,7 @@ function bindCatalogClicks() {
   });
   app.querySelectorAll("[data-add]").forEach((el) => {
     el.addEventListener("click", (e) => {
+      e.preventDefault();
       e.stopPropagation();
       const p = productById(el.getAttribute("data-add"));
       if (p) addToCart(p);
@@ -275,7 +301,19 @@ backBtn.addEventListener("click", () => {
   if (history.length > 1) history.back();
   else go("/");
 });
-cartBtn.addEventListener("click", () => go("/cart"));
+cartBtn.addEventListener("click", () => {
+  closeCartSheet();
+  go("/cart");
+});
+document.getElementById("sheetBackdrop").addEventListener("click", closeCartSheet);
+document.getElementById("sheetContinue").addEventListener("click", closeCartSheet);
+document.getElementById("sheetViewCart").addEventListener("click", () => {
+  closeCartSheet();
+  go("/cart");
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeCartSheet();
+});
 shareBtn.addEventListener("click", async () => {
   const url = location.origin + "/";
   try {

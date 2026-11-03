@@ -43,13 +43,15 @@
           <div class="field">
             <label>Banner photo</label>
             <div class="thumbs" id="bannerPreview"></div>
-            <label class="file-btn">Upload banner<input type="file" accept="image/*" id="bannerFile" /></label>
+            <input class="visually-hidden" type="file" accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.gif" id="bannerFile" />
+            <button class="file-btn" type="button" id="bannerPick">Upload banner</button>
             <input type="hidden" name="banner" />
           </div>
           <div class="field">
             <label>Profile / avatar photo</label>
             <div class="thumbs" id="avatarPreview"></div>
-            <label class="file-btn">Upload avatar<input type="file" accept="image/*" id="avatarFile" /></label>
+            <input class="visually-hidden" type="file" accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.gif" id="avatarFile" />
+            <button class="file-btn" type="button" id="avatarPick">Upload avatar</button>
             <input type="hidden" name="avatar" />
           </div>
           <button class="primary" type="submit">Save website</button>
@@ -81,7 +83,15 @@
           <div class="field">
             <label>Photos</label>
             <div class="thumbs" id="productThumbs"></div>
-            <label class="file-btn">Add photos<input type="file" accept="image/*" id="productFiles" multiple /></label>
+            <p class="muted" id="photoStatus"></p>
+            <p class="error" id="photoError"></p>
+            <div class="photo-actions">
+              <input class="visually-hidden" type="file" accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.gif" id="productFiles" multiple />
+              <button class="file-btn" type="button" id="productPick">Upload photos</button>
+              <button class="file-btn" type="button" id="productReplace">Replace photos</button>
+            </div>
+            <input id="productImageUrl" placeholder="Or paste an image URL" />
+            <button class="file-btn" type="button" id="productAddUrl" style="margin-top:8px">Add image URL</button>
           </div>
           <button class="primary" type="submit" id="productSubmit">Add product</button>
           <button type="button" class="danger hidden" id="cancelEdit" style="margin-top:10px;width:100%">Cancel edit</button>

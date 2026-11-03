@@ -17,6 +17,7 @@ function toast(msg) {
 
 async function api(url, opts = {}) {
   const res = await fetch(url, {
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
     ...opts,
   });
@@ -25,15 +26,39 @@ async function api(url, opts = {}) {
   return data;
 }
 
+function setPhotoStatus(msg, isError = false) {
+  const status = document.getElementById("photoStatus");
+  const err = document.getElementById("photoError");
+  if (status) status.textContent = isError ? "" : msg;
+  if (err) err.textContent = isError ? msg : "";
+}
+
 async function uploadFiles(fileList) {
   const files = [...fileList];
   if (!files.length) return [];
   const body = new FormData();
   files.forEach((f) => body.append("files", f));
-  const res = await fetch("/api/upload", { method: "POST", body });
-  const data = await res.json();
+  const res = await fetch("/api/upload", { method: "POST", body, credentials: "include" });
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Upload failed");
   return data.urls || [];
+}
+
+async function pickAndUpload(input, { replace = false } = {}) {
+  try {
+    setPhotoStatus("Uploading photos…");
+    const urls = await uploadFiles(input.files);
+    if (!urls.length) throw new Error("No photos were uploaded");
+    productImages = replace ? urls : productImages.concat(urls);
+    renderProductThumbs();
+    setPhotoStatus(`${urls.length} photo${urls.length > 1 ? "s" : ""} added. Save the product to keep them.`);
+    toast("Photos added — click Add product to save");
+  } catch (ex) {
+    setPhotoStatus(ex.message, true);
+    toast(ex.message);
+  } finally {
+    input.value = "";
+  }
 }
 
 function preview(el, src) {
@@ -182,6 +207,7 @@ function resetProductForm() {
   productForm.id.value = "";
   productImages = [];
   renderProductThumbs();
+  setPhotoStatus("");
   document.getElementById("productSubmit").textContent = "Add product";
   document.getElementById("cancelEdit").classList.add("hidden");
   fillCategorySelect();
@@ -238,21 +264,41 @@ settingsForm.addEventListener("submit", async (e) => {
   await refresh();
 });
 
+document.getElementById("bannerPick").addEventListener("click", () => document.getElementById("bannerFile").click());
+document.getElementById("avatarPick").addEventListener("click", () => document.getElementById("avatarFile").click());
+document.getElementById("productPick").addEventListener("click", () => document.getElementById("productFiles").click());
+document.getElementById("productReplace").addEventListener("click", () => {
+  document.getElementById("productFiles").dataset.replace = "1";
+  document.getElementById("productFiles").click();
+});
+
 document.getElementById("bannerFile").addEventListener("change", async (e) => {
-  const urls = await uploadFiles(e.target.files);
-  if (urls[0]) {
-    settingsForm.banner.value = urls[0];
-    preview(document.getElementById("bannerPreview"), urls[0]);
-    toast("Banner uploaded — click Save website");
+  try {
+    const urls = await uploadFiles(e.target.files);
+    if (urls[0]) {
+      settingsForm.banner.value = urls[0];
+      preview(document.getElementById("bannerPreview"), urls[0]);
+      toast("Banner uploaded — click Save website");
+    }
+  } catch (ex) {
+    toast(ex.message);
+  } finally {
+    e.target.value = "";
   }
 });
 
 document.getElementById("avatarFile").addEventListener("change", async (e) => {
-  const urls = await uploadFiles(e.target.files);
-  if (urls[0]) {
-    settingsForm.avatar.value = urls[0];
-    preview(document.getElementById("avatarPreview"), urls[0]);
-    toast("Avatar uploaded — click Save website");
+  try {
+    const urls = await uploadFiles(e.target.files);
+    if (urls[0]) {
+      settingsForm.avatar.value = urls[0];
+      preview(document.getElementById("avatarPreview"), urls[0]);
+      toast("Avatar uploaded — click Save website");
+    }
+  } catch (ex) {
+    toast(ex.message);
+  } finally {
+    e.target.value = "";
   }
 });
 
@@ -274,20 +320,37 @@ productForm.addEventListener("submit", async (e) => {
     subtitle: data.subtitle,
     price: data.price,
     description: data.description,
-    images: productImages,
+    images: productImages.filter(Boolean),
   };
-  if (data.id) await api(`/api/products/${data.id}`, { method: "PUT", body: JSON.stringify(payload) });
-  else await api("/api/products", { method: "POST", body: JSON.stringify(payload) });
-  resetProductForm();
-  await refresh();
-  toast("Product saved");
+  try {
+    if (data.id) await api(`/api/products/${data.id}`, { method: "PUT", body: JSON.stringify(payload) });
+    else await api("/api/products", { method: "POST", body: JSON.stringify(payload) });
+    resetProductForm();
+    await refresh();
+    toast("Product saved");
+  } catch (ex) {
+    toast(ex.message);
+  }
 });
 
 document.getElementById("productFiles").addEventListener("change", async (e) => {
-  const urls = await uploadFiles(e.target.files);
-  productImages = productImages.concat(urls);
+  const replace = e.target.dataset.replace === "1";
+  e.target.dataset.replace = "";
+  if (!e.target.files.length) return;
+  await pickAndUpload(e.target, { replace });
+});
+
+document.getElementById("productAddUrl").addEventListener("click", () => {
+  const input = document.getElementById("productImageUrl");
+  const url = String(input.value || "").trim();
+  if (!url) {
+    setPhotoStatus("Paste an image URL first", true);
+    return;
+  }
+  productImages.push(url);
   renderProductThumbs();
-  e.target.value = "";
+  input.value = "";
+  setPhotoStatus("Image URL added. Save the product to keep it.");
 });
 
 document.getElementById("cancelEdit").addEventListener("click", resetProductForm);

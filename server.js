@@ -5,17 +5,33 @@ const session = require("express-session");
 const multer = require("multer");
 
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = "reet4444";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "reet4444";
 const ROOT = __dirname;
 const IS_VERCEL = Boolean(process.env.VERCEL);
 const BUNDLED_DATA = path.join(ROOT, "data", "store.json");
 const DATA_FILE = IS_VERCEL ? path.join("/tmp", "store.json") : BUNDLED_DATA;
 const UPLOAD_DIR = IS_VERCEL ? path.join("/tmp", "uploads") : path.join(ROOT, "uploads");
+const DEFAULT_STORE = {
+  settings: {
+    businessName: "",
+    tagline: "",
+    phoneDisplay: "",
+    whatsapp: "",
+    about: "",
+    banner: "",
+    avatar: "",
+  },
+  categories: [],
+  products: [],
+};
 
 fs.mkdirSync(path.join(ROOT, "data"), { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 if (IS_VERCEL && !fs.existsSync(DATA_FILE) && fs.existsSync(BUNDLED_DATA)) {
   fs.copyFileSync(BUNDLED_DATA, DATA_FILE);
+}
+if (!fs.existsSync(DATA_FILE)) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(DEFAULT_STORE, null, 2));
 }
 
 function toEnglishText(value) {
@@ -26,8 +42,10 @@ function toEnglishText(value) {
 }
 
 function sanitizeStore(store) {
-  const s = store.settings || {};
-  store.settings = {
+  const safe = { ...DEFAULT_STORE, ...(store || {}) };
+  const s = safe.settings || {};
+  safe.settings = {
+    ...DEFAULT_STORE.settings,
     ...s,
     businessName: toEnglishText(s.businessName),
     tagline: toEnglishText(s.tagline),
@@ -37,27 +55,35 @@ function sanitizeStore(store) {
     banner: String(s.banner || ""),
     avatar: String(s.avatar || ""),
   };
-  store.categories = (store.categories || []).map((c) => ({
+  safe.categories = (safe.categories || []).map((c) => ({
     ...c,
     name: toEnglishText(c.name),
     subtitle: toEnglishText(c.subtitle),
   }));
-  store.products = (store.products || []).map((p) => ({
+  safe.products = (safe.products || []).map((p) => ({
     ...p,
     name: toEnglishText(p.name),
     subtitle: toEnglishText(p.subtitle),
     description: toEnglishText(p.description),
     price: toEnglishText(p.price),
   }));
-  return store;
+  return safe;
 }
 
 function readStore() {
-  return sanitizeStore(JSON.parse(fs.readFileSync(DATA_FILE, "utf8")));
+  try {
+    const raw = fs.readFileSync(DATA_FILE, "utf8");
+    const parsed = raw ? JSON.parse(raw) : DEFAULT_STORE;
+    return sanitizeStore(parsed);
+  } catch (error) {
+    const fallback = sanitizeStore(DEFAULT_STORE);
+    fs.writeFileSync(DATA_FILE, JSON.stringify(fallback, null, 2));
+    return fallback;
+  }
 }
 
 function writeStore(data) {
-  const clean = sanitizeStore(data);
+  const clean = sanitizeStore(data || DEFAULT_STORE);
   fs.writeFileSync(DATA_FILE, JSON.stringify(clean, null, 2));
 }
 
@@ -82,23 +108,30 @@ const upload = multer({
   storage,
   limits: { fileSize: 12 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Only image files are allowed"));
-    }
-    cb(null, true);
+    const mime = String(file.mimetype || "");
+    const name = String(file.originalname || "");
+    const okMime = mime.startsWith("image/");
+    const okExt = /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif)$/i.test(name);
+    if (okMime || okExt) return cb(null, true);
+    cb(new Error("Only image files are allowed"));
   },
 });
 
 const app = express();
 app.set("trust proxy", 1);
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "15mb" }));
 app.use(
   session({
     name: "catalog.sid",
-    secret: "reet-catalog-secret-reet4444",
+    secret: process.env.SESSION_SECRET || "reet-catalog-secret-reet4444",
     resave: false,
     saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1000 },
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: IS_VERCEL,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    },
   })
 );
 
@@ -225,7 +258,14 @@ app.delete("/api/products/:id", requireAdmin, (req, res) => {
 });
 
 app.post("/api/upload", requireAdmin, upload.array("files", 12), (req, res) => {
-  const urls = (req.files || []).map((f) => `/uploads/${f.filename}`);
+  const urls = (req.files || []).map((f) => {
+    if (IS_VERCEL) {
+      const buf = fs.readFileSync(f.path);
+      const mime = f.mimetype && f.mimetype.startsWith("image/") ? f.mimetype : "image/jpeg";
+      return `data:${mime};base64,${buf.toString("base64")}`;
+    }
+    return `/uploads/${f.filename}`;
+  });
   res.json({ urls });
 });
 
