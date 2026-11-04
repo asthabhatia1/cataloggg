@@ -15,6 +15,27 @@ function toast(msg) {
   setTimeout(() => toastEl.classList.remove("show"), 1800);
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[char]);
+}
+
+function safeImageUrl(value) {
+  if (typeof value !== "string" || !value) return "";
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  try {
+    const url = new URL(value, location.origin);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 async function api(url, opts = {}) {
   const res = await fetch(url, {
     credentials: "include",
@@ -36,12 +57,25 @@ function setPhotoStatus(msg, isError = false) {
 async function uploadFiles(fileList) {
   const files = [...fileList];
   if (!files.length) return [];
-  const body = new FormData();
-  files.forEach((f) => body.append("files", f));
-  const res = await fetch("/api/upload", { method: "POST", body, credentials: "include" });
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ files: files.map((file) => ({ type: file.type })) }),
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Upload failed");
-  return data.urls || [];
+  const uploads = data.uploads || [];
+  const results = await Promise.all(uploads.map(async (upload, index) => {
+    const response = await fetch(upload.uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": files[index].type, "x-upsert": "true" },
+      body: files[index],
+    });
+    if (!response.ok) throw new Error(`Image upload failed (${response.status}).`);
+    return upload.url;
+  }));
+  return results;
 }
 
 async function pickAndUpload(input, { replace = false } = {}) {
@@ -62,7 +96,8 @@ async function pickAndUpload(input, { replace = false } = {}) {
 }
 
 function preview(el, src) {
-  el.innerHTML = src ? `<img src="${src}" alt="" />` : "";
+  const image = safeImageUrl(src);
+  el.innerHTML = image ? `<img src="${escapeHtml(image)}" alt="" />` : "";
 }
 
 function renderProductThumbs() {
@@ -70,7 +105,7 @@ function renderProductThumbs() {
     .map(
       (src, i) => `
       <div style="position:relative">
-        <img src="${src}" alt="" />
+        <img src="${escapeHtml(safeImageUrl(src))}" alt="" />
         <button type="button" data-rm="${i}" style="position:absolute;top:2px;right:2px;border:0;border-radius:6px;background:#111;color:#fff;width:22px;height:22px">×</button>
       </div>`
     )
@@ -99,7 +134,7 @@ function fillSettings() {
 function fillCategorySelect() {
   const sel = productForm.categoryId;
   sel.innerHTML = catalog.categories
-    .map((c) => `<option value="${c.id}">${c.name}</option>`)
+    .map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`)
     .join("");
 }
 
@@ -111,18 +146,18 @@ function renderCategories() {
       <div class="row-card">
         <div class="row-between">
           <div style="flex:1">
-            <strong>${c.name}</strong>
-            <div class="muted">${c.subtitle || ""}</div>
+            <strong>${escapeHtml(c.name)}</strong>
+            <div class="muted">${escapeHtml(c.subtitle || "")}</div>
             <div class="field" style="margin-top:8px">
-              <input data-rename="${c.id}" value="${String(c.name).replace(/"/g, "&quot;")}" />
+              <input data-rename="${escapeHtml(c.id)}" value="${escapeHtml(c.name)}" />
             </div>
             <div class="field" style="margin-top:8px">
-              <input data-subtitle="${c.id}" value="${String(c.subtitle || "").replace(/"/g, "&quot;")}" placeholder="English subtitle" />
+              <input data-subtitle="${escapeHtml(c.id)}" value="${escapeHtml(c.subtitle || "")}" placeholder="English subtitle" />
             </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:8px">
-            <button type="button" class="file-btn" data-save-cat="${c.id}" style="border:0">Save</button>
-            <button class="danger" data-del-cat="${c.id}">Remove</button>
+            <button type="button" class="file-btn" data-save-cat="${escapeHtml(c.id)}" style="border:0">Save</button>
+            <button class="danger" data-del-cat="${escapeHtml(c.id)}">Remove</button>
           </div>
         </div>
       </div>`
@@ -131,22 +166,30 @@ function renderCategories() {
   list.querySelectorAll("[data-save-cat]").forEach((b) => {
     b.addEventListener("click", async () => {
       const id = b.getAttribute("data-save-cat");
-      const input = list.querySelector(`[data-rename="${id}"]`);
-      const subtitle = list.querySelector(`[data-subtitle="${id}"]`);
-      await api(`/api/categories/${id}`, {
-        method: "PUT",
-        body: JSON.stringify({ name: input.value, subtitle: subtitle ? subtitle.value : "" }),
-      });
-      await refresh();
-      toast("Category updated");
+      const input = [...list.querySelectorAll("[data-rename]")].find((item) => item.dataset.rename === id);
+      const subtitle = [...list.querySelectorAll("[data-subtitle]")].find((item) => item.dataset.subtitle === id);
+      try {
+        await api(`/api/categories/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body: JSON.stringify({ name: input.value, subtitle: subtitle ? subtitle.value : "" }),
+        });
+        await refresh();
+        toast("Category updated");
+      } catch (ex) {
+        toast(ex.message);
+      }
     });
   });
   list.querySelectorAll("[data-del-cat]").forEach((b) => {
     b.addEventListener("click", async () => {
       if (!confirm("Delete this category and its products?")) return;
-      await api(`/api/categories/${b.getAttribute("data-del-cat")}`, { method: "DELETE" });
-      await refresh();
-      toast("Category removed");
+      try {
+        await api(`/api/categories/${encodeURIComponent(b.getAttribute("data-del-cat"))}`, { method: "DELETE" });
+        await refresh();
+        toast("Category removed");
+      } catch (ex) {
+        toast(ex.message);
+      }
     });
   });
 }
@@ -160,13 +203,13 @@ function renderProducts() {
       <div class="row-card">
         <div class="row-between">
           <div>
-            <strong>${p.name}</strong>
-            <div class="muted">${byCat[p.categoryId] || ""} · ${p.subtitle || ""}</div>
-            <div class="thumbs">${(p.images || []).map((src) => `<img src="${src}" alt="" />`).join("")}</div>
+            <strong>${escapeHtml(p.name)}</strong>
+            <div class="muted">${escapeHtml(byCat[p.categoryId] || "")} · ${escapeHtml(p.subtitle || "")}</div>
+            <div class="thumbs">${(p.images || []).map((src) => `<img src="${escapeHtml(safeImageUrl(src))}" alt="" />`).join("")}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:8px">
-            <button type="button" class="file-btn" data-edit="${p.id}" style="border:0">Edit</button>
-            <button class="danger" data-del-p="${p.id}">Remove</button>
+            <button type="button" class="file-btn" data-edit="${escapeHtml(p.id)}" style="border:0">Edit</button>
+            <button class="danger" data-del-p="${escapeHtml(p.id)}">Remove</button>
           </div>
         </div>
       </div>`
@@ -175,9 +218,13 @@ function renderProducts() {
   list.querySelectorAll("[data-del-p]").forEach((b) => {
     b.addEventListener("click", async () => {
       if (!confirm("Remove this product?")) return;
-      await api(`/api/products/${b.getAttribute("data-del-p")}`, { method: "DELETE" });
-      await refresh();
-      toast("Product removed");
+      try {
+        await api(`/api/products/${encodeURIComponent(b.getAttribute("data-del-p"))}`, { method: "DELETE" });
+        await refresh();
+        toast("Product removed");
+      } catch (ex) {
+        toast(ex.message);
+      }
     });
   });
   list.querySelectorAll("[data-edit]").forEach((b) => {
@@ -243,8 +290,12 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
 });
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
-  await api("/api/logout", { method: "POST" });
-  location.reload();
+  try {
+    await api("/api/logout", { method: "POST" });
+    location.reload();
+  } catch (ex) {
+    toast(ex.message);
+  }
 });
 
 document.querySelectorAll(".admin-nav [data-tab]").forEach((btn) => {
@@ -258,10 +309,14 @@ document.querySelectorAll(".admin-nav [data-tab]").forEach((btn) => {
 
 settingsForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const body = Object.fromEntries(new FormData(settingsForm).entries());
-  await api("/api/settings", { method: "PUT", body: JSON.stringify(body) });
-  toast("Website saved");
-  await refresh();
+  try {
+    const body = Object.fromEntries(new FormData(settingsForm).entries());
+    await api("/api/settings", { method: "PUT", body: JSON.stringify(body) });
+    toast("Website saved");
+    await refresh();
+  } catch (ex) {
+    toast(ex.message);
+  }
 });
 
 document.getElementById("bannerPick").addEventListener("click", () => document.getElementById("bannerFile").click());
@@ -304,11 +359,15 @@ document.getElementById("avatarFile").addEventListener("change", async (e) => {
 
 catForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const body = Object.fromEntries(new FormData(catForm).entries());
-  await api("/api/categories", { method: "POST", body: JSON.stringify(body) });
-  catForm.reset();
-  await refresh();
-  toast("Category added");
+  try {
+    const body = Object.fromEntries(new FormData(catForm).entries());
+    await api("/api/categories", { method: "POST", body: JSON.stringify(body) });
+    catForm.reset();
+    await refresh();
+    toast("Category added");
+  } catch (ex) {
+    toast(ex.message);
+  }
 });
 
 productForm.addEventListener("submit", async (e) => {
@@ -363,6 +422,6 @@ document.getElementById("cancelEdit").addEventListener("click", resetProductForm
       await refresh();
     }
   } catch {
-    /* stay on login */
+    toast("Could not check the admin session. Refresh and try again.");
   }
 })();

@@ -5,11 +5,20 @@
   "description": "Wholesale beauty & hair-care catalog with admin panel",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node --env-file=.env server.js",
+    "test": "node --test test/*.test.js",
+    "test:integration": "node --test integration/api.integration.test.js",
+    "migrate:json": "node --env-file=.env scripts/migrate-json-to-supabase.js",
+    "smoke": "node scripts/smoke-test.js"
+  },
+  "engines": {
+    "node": ">=20.6.0"
   },
   "dependencies": {
+    "connect-pg-simple": "^10.0.0",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
-    "multer": "^2.5.0"
+    "helmet": "^8.1.0",
+    "pg": "^8.16.3"
   }
 }

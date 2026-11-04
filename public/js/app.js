@@ -15,13 +15,31 @@ const sheetSub = document.getElementById("sheetSub");
 let catalog = { settings: {}, categories: [], products: [] };
 
 function waLink(text) {
-  const num = catalog.settings.whatsapp || "918920821103";
+  const num = (catalog.settings.whatsapp || "918920821103").replace(/\D/g, "");
   const msg = encodeURIComponent(text || "Hi, I want to enquire about your catalog.");
   return `https://wa.me/${num}?text=${msg}`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[char]);
+}
+
 function imgSrc(src) {
-  return src || "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=60";
+  const fallback = "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=60";
+  if (typeof src !== "string" || !src) return fallback;
+  if (src.startsWith("/") && !src.startsWith("//")) return src;
+  try {
+    const url = new URL(src, location.origin);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function getCart() {
@@ -115,12 +133,12 @@ function renderHome() {
   const cats = catalog.categories;
   app.innerHTML = `
     <section class="hero">
-      <img src="${imgSrc(s.banner)}" alt="" />
+      <img src="${escapeHtml(imgSrc(s.banner))}" alt="" />
       <div class="hero-copy">
-        <a class="hero-phone" href="${waLink("Hi, I saw your catalog.")}">${s.phoneDisplay || "+91 89208 21103"}
+        <a class="hero-phone" href="${waLink("Hi, I saw your catalog.")}">${escapeHtml(s.phoneDisplay || "+91 89208 21103")}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
         </a>
-        <p class="hero-tag">${s.tagline || ""}</p>
+        <p class="hero-tag">${escapeHtml(s.tagline || "")}</p>
       </div>
     </section>
     ${cats
@@ -129,21 +147,21 @@ function renderHome() {
         if (!items.length) return "";
         return `
           <div class="cat-head">
-            <h2>${c.name}${c.subtitle ? `<span class="sub">${c.subtitle}</span>` : ""}</h2>
-            <button class="see-all" data-cat="${c.id}">See all</button>
+            <h2>${escapeHtml(c.name)}${c.subtitle ? `<span class="sub">${escapeHtml(c.subtitle)}</span>` : ""}</h2>
+            <button class="see-all" data-cat="${escapeHtml(c.id)}">See all</button>
           </div>
           <div class="desktop-grid">
             ${items
               .slice(0, 6)
               .map(
                 (p) => `
-              <div class="product-row" data-open="${p.id}">
-                <img class="thumb" src="${imgSrc(p.images && p.images[0])}" alt="" />
+              <div class="product-row" data-open="${escapeHtml(p.id)}">
+                <img class="thumb" src="${escapeHtml(imgSrc(p.images && p.images[0]))}" alt="" />
                 <div class="meta">
-                  <h3>${p.name}</h3>
-                  <div class="muted">${p.subtitle || ""}</div>
+                  <h3>${escapeHtml(p.name)}</h3>
+                  <div class="muted">${escapeHtml(p.subtitle || "")}</div>
                 </div>
-                <button class="add-btn" data-add="${p.id}" aria-label="Add">${plusSvg()}</button>
+                <button class="add-btn" data-add="${escapeHtml(p.id)}" aria-label="Add">${plusSvg()}</button>
               </div>`
               )
               .join("")}
@@ -165,14 +183,14 @@ function renderCategory(id) {
         items
           .map(
             (p) => `
-        <article class="card" data-open="${p.id}">
-          <img class="cover" src="${imgSrc(p.images && p.images[0])}" alt="" />
+        <article class="card" data-open="${escapeHtml(p.id)}">
+          <img class="cover" src="${escapeHtml(imgSrc(p.images && p.images[0]))}" alt="" />
           <div class="body">
             <div class="meta">
-              <h3>${p.name}</h3>
-              <div class="muted">${p.subtitle || ""}</div>
+              <h3>${escapeHtml(p.name)}</h3>
+              <div class="muted">${escapeHtml(p.subtitle || "")}</div>
             </div>
-            <button class="add-btn" data-add="${p.id}" aria-label="Add">${plusSvg()}</button>
+            <button class="add-btn" data-add="${escapeHtml(p.id)}" aria-label="Add">${plusSvg()}</button>
           </div>
         </article>`
           )
@@ -197,25 +215,25 @@ function renderProduct(id) {
   app.innerHTML = `
     <div class="product-detail">
       <div class="gallery">
-        ${images.map((src) => `<img src="${imgSrc(src)}" alt="${p.name}" />`).join("")}
+        ${images.map((src) => `<img src="${escapeHtml(imgSrc(src))}" alt="${escapeHtml(p.name)}" />`).join("")}
       </div>
       <div>
         <div class="p-title">
-          <h1>${p.name}</h1>
-          <div class="muted">${p.subtitle || ""}</div>
-          ${p.price ? `<div style="margin-top:8px;font-weight:600">${p.price}</div>` : ""}
+          <h1>${escapeHtml(p.name)}</h1>
+          <div class="muted">${escapeHtml(p.subtitle || "")}</div>
+          ${p.price ? `<div style="margin-top:8px;font-weight:600">${escapeHtml(p.price)}</div>` : ""}
         </div>
-        ${p.description ? `<p class="muted" style="margin:12px 0 0">${p.description}</p>` : ""}
+        ${p.description ? `<p class="muted" style="margin:12px 0 0">${escapeHtml(p.description)}</p>` : ""}
         <a class="msg-biz" href="${waLink(enquiry)}">Message business</a>
         <div class="about">
-          <img class="avatar" src="${imgSrc(s.avatar)}" alt="" />
+          <img class="avatar" src="${escapeHtml(imgSrc(s.avatar))}" alt="" />
           <div>
             <h3>About the business</h3>
-            <strong>${s.phoneDisplay || ""}</strong>
-            <p>${s.about || s.tagline || ""}</p>
+            <strong>${escapeHtml(s.phoneDisplay || "")}</strong>
+            <p>${escapeHtml(s.about || s.tagline || "")}</p>
           </div>
         </div>
-        <button class="sticky-cart" data-add="${p.id}">Add to cart</button>
+        <button class="sticky-cart" data-add="${escapeHtml(p.id)}">Add to cart</button>
       </div>
     </div>
   `;
@@ -237,15 +255,15 @@ function renderCart() {
       .map(
         (i) => `
       <div class="cart-item">
-        <img class="thumb" src="${imgSrc(i.image)}" alt="" />
+        <img class="thumb" src="${escapeHtml(imgSrc(i.image))}" alt="" />
         <div class="meta">
-          <h3 style="margin:0;font-size:1rem">${i.name}</h3>
-          <div class="muted">${i.subtitle || ""}</div>
+          <h3 style="margin:0;font-size:1rem">${escapeHtml(i.name)}</h3>
+          <div class="muted">${escapeHtml(i.subtitle || "")}</div>
         </div>
         <div class="qty">
-          <button data-qty="${i.id}" data-d="-1">−</button>
-          <span>${i.qty}</span>
-          <button data-qty="${i.id}" data-d="1">+</button>
+          <button data-qty="${escapeHtml(i.id)}" data-d="-1">−</button>
+          <span>${escapeHtml(i.qty)}</span>
+          <button data-qty="${escapeHtml(i.id)}" data-d="1">+</button>
         </div>
       </div>`
       )
